@@ -108,6 +108,34 @@
             color: #2e7d32;
         }
 
+        .file-upload-label.twitter {
+            border-color: #1da1f2;
+        }
+
+        .file-upload-label.twitter:hover {
+            background: #e3f2fd;
+            border-color: #1976d2;
+        }
+
+        .file-upload-label.twitter.has-file {
+            background: #e3f2fd;
+            border-color: #1976d2;
+            color: #1565c0;
+        }
+
+        .csv-uploads {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 25px;
+        }
+
+        @media (max-width: 600px) {
+            .csv-uploads {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .checkbox-group {
             display: flex;
             gap: 20px;
@@ -197,6 +225,15 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+            padding-bottom: 5px;
+        }
     </style>
 </head>
 <body>
@@ -213,21 +250,30 @@
             </div>
 
             <div class="form-group">
-                <label for="twitterSearchTerms">Twitter/X Search Terms</label>
-                <input type="text" id="twitterSearchTerms" name="twitterSearchTerms" 
-                       placeholder='Coinbase AND (JPM OR "JP Morgan")' required>
-                <p class="help-text">Enter search terms for Twitter/X monitoring</p>
-            </div>
-
-            <div class="form-group">
-                <label for="meltwaterFile">Meltwater CSV File (Optional)</label>
-                <div class="file-upload">
-                    <input type="file" id="meltwaterFile" name="meltwaterFile" accept=".csv">
-                    <label for="meltwaterFile" class="file-upload-label" id="fileLabel">
-                        Click to upload CSV file or drag and drop
-                    </label>
+                <div class="section-title">CSV File Uploads</div>
+                <div class="csv-uploads">
+                    <div>
+                        <label for="twitterCsvFile">Twitter/X Posts CSV</label>
+                        <div class="file-upload">
+                            <input type="file" id="twitterCsvFile" name="twitterCsvFile" accept=".csv">
+                            <label for="twitterCsvFile" class="file-upload-label twitter" id="twitterFileLabel">
+                                🐦 Upload Twitter CSV
+                            </label>
+                        </div>
+                        <p class="help-text">CSV file with Twitter/X posts from Meltwater</p>
+                    </div>
+                    
+                    <div>
+                        <label for="newsCsvFile">News Articles CSV</label>
+                        <div class="file-upload">
+                            <input type="file" id="newsCsvFile" name="newsCsvFile" accept=".csv">
+                            <label for="newsCsvFile" class="file-upload-label" id="newsFileLabel">
+                                📰 Upload News CSV
+                            </label>
+                        </div>
+                        <p class="help-text">CSV file with news articles from Meltwater</p>
+                    </div>
                 </div>
-                <p class="help-text">Upload a CSV file from Meltwater (optional)</p>
             </div>
 
             <div class="form-group">
@@ -235,15 +281,15 @@
                 <div class="checkbox-group">
                     <div class="checkbox-item">
                         <input type="checkbox" id="sourceTwitter" name="sourceTwitter" checked>
-                        <label for="sourceTwitter">Twitter/X</label>
+                        <label for="sourceTwitter">Twitter/X CSV</label>
                     </div>
                     <div class="checkbox-item">
                         <input type="checkbox" id="sourceGoogleNews" name="sourceGoogleNews" checked>
-                        <label for="sourceGoogleNews">Google News</label>
+                        <label for="sourceGoogleNews">Google News RSS</label>
                     </div>
                     <div class="checkbox-item">
-                        <input type="checkbox" id="sourceMeltwater" name="sourceMeltwater" checked>
-                        <label for="sourceMeltwater">Meltwater</label>
+                        <input type="checkbox" id="sourceNews" name="sourceNews" checked>
+                        <label for="sourceNews">News CSV</label>
                     </div>
                 </div>
             </div>
@@ -268,45 +314,42 @@
         const WEBHOOK_URL = 'https://swheatman.app.n8n.cloud/webhook/media-tracker';
         
         const form = document.getElementById('mediaTrackerForm');
-        const fileInput = document.getElementById('meltwaterFile');
-        const fileLabel = document.getElementById('fileLabel');
+        const twitterFileInput = document.getElementById('twitterCsvFile');
+        const newsFileInput = document.getElementById('newsCsvFile');
+        const twitterFileLabel = document.getElementById('twitterFileLabel');
+        const newsFileLabel = document.getElementById('newsFileLabel');
         const submitBtn = document.getElementById('submitBtn');
         const statusMessage = document.getElementById('statusMessage');
 
-        // Handle file selection
-        fileInput.addEventListener('change', function(e) {
+        // Handle Twitter CSV file selection
+        twitterFileInput.addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
-                fileLabel.textContent = `Selected: ${file.name} (${formatFileSize(file.size)})`;
-                fileLabel.classList.add('has-file');
+                twitterFileLabel.textContent = `🐦 ${file.name} (${formatFileSize(file.size)})`;
+                twitterFileLabel.classList.add('has-file');
             } else {
-                fileLabel.textContent = 'Click to upload CSV file or drag and drop';
-                fileLabel.classList.remove('has-file');
+                twitterFileLabel.textContent = '🐦 Upload Twitter CSV';
+                twitterFileLabel.classList.remove('has-file');
             }
         });
 
-        // Handle drag and drop
-        fileLabel.addEventListener('dragover', function(e) {
-            e.preventDefault();
-            fileLabel.style.background = '#e9ecef';
-        });
-
-        fileLabel.addEventListener('dragleave', function(e) {
-            e.preventDefault();
-            fileLabel.style.background = '#f8f9fa';
-        });
-
-        fileLabel.addEventListener('drop', function(e) {
-            e.preventDefault();
-            fileLabel.style.background = '#f8f9fa';
-            
-            const files = e.dataTransfer.files;
-            if (files.length > 0 && files[0].type === 'text/csv') {
-                fileInput.files = files;
-                fileLabel.textContent = `Selected: ${files[0].name} (${formatFileSize(files[0].size)})`;
-                fileLabel.classList.add('has-file');
+        // Handle News CSV file selection
+        newsFileInput.addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                newsFileLabel.textContent = `📰 ${file.name} (${formatFileSize(file.size)})`;
+                newsFileLabel.classList.add('has-file');
+            } else {
+                newsFileLabel.textContent = '📰 Upload News CSV';
+                newsFileLabel.classList.remove('has-file');
             }
         });
+
+        // Handle drag and drop for Twitter CSV
+        setupDragAndDrop(twitterFileLabel, twitterFileInput, '🐦 Upload Twitter CSV');
+        
+        // Handle drag and drop for News CSV
+        setupDragAndDrop(newsFileLabel, newsFileInput, '📰 Upload News CSV');
 
         // Handle form submission
         form.addEventListener('submit', async function(e) {
@@ -315,28 +358,32 @@
             // Show loading state
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<span class="spinner"></span>Processing...';
-            showStatus('loading', 'Sending data to n8n workflow...');
+            showStatus('loading', 'Preparing data...');
 
             try {
                 // Prepare the data
                 const formData = {
                     googleAlertsRss: document.getElementById('googleAlertsRss').value,
-                    twitterSearchTerms: document.getElementById('twitterSearchTerms').value,
                     sheetUrl: document.getElementById('sheetUrl').value,
                     sources: {
                         twitter: document.getElementById('sourceTwitter').checked,
                         googleNews: document.getElementById('sourceGoogleNews').checked,
-                        meltwater: document.getElementById('sourceMeltwater').checked
-                    },
-                    meltwaterMethod: 'csv',
-                    timeRange: 'last24h'
+                        news: document.getElementById('sourceNews').checked
+                    }
                 };
 
-                // Handle CSV file if uploaded
-                const csvFile = fileInput.files[0];
-                if (csvFile) {
-                    showStatus('loading', 'Processing CSV file...');
-                    formData.meltwaterFile = await fileToBase64(csvFile);
+                // Handle Twitter CSV file if uploaded
+                const twitterCsvFile = twitterFileInput.files[0];
+                if (twitterCsvFile) {
+                    showStatus('loading', 'Processing Twitter CSV file...');
+                    formData.twitterCsvFile = await fileToBase64(twitterCsvFile);
+                }
+
+                // Handle News CSV file if uploaded
+                const newsCsvFile = newsFileInput.files[0];
+                if (newsCsvFile) {
+                    showStatus('loading', 'Processing News CSV file...');
+                    formData.newsCsvFile = await fileToBase64(newsCsvFile);
                 }
 
                 // Send to n8n webhook
@@ -352,8 +399,10 @@
                 if (response.ok) {
                     showStatus('success', 'Media tracking workflow started successfully! Check your Google Sheets for results.');
                     form.reset();
-                    fileLabel.textContent = 'Click to upload CSV file or drag and drop';
-                    fileLabel.classList.remove('has-file');
+                    twitterFileLabel.textContent = '🐦 Upload Twitter CSV';
+                    twitterFileLabel.classList.remove('has-file');
+                    newsFileLabel.textContent = '📰 Upload News CSV';
+                    newsFileLabel.classList.remove('has-file');
                 } else {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
@@ -365,6 +414,39 @@
                 submitBtn.innerHTML = 'Start Media Tracking';
             }
         });
+
+        // Helper function to set up drag and drop
+        function setupDragAndDrop(label, input, defaultText) {
+            label.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                label.style.background = '#e9ecef';
+            });
+
+            label.addEventListener('dragleave', function(e) {
+                e.preventDefault();
+                if (label.classList.contains('twitter')) {
+                    label.style.background = '#f8f9fa';
+                } else {
+                    label.style.background = '#f8f9fa';
+                }
+            });
+
+            label.addEventListener('drop', function(e) {
+                e.preventDefault();
+                if (label.classList.contains('twitter')) {
+                    label.style.background = '#f8f9fa';
+                } else {
+                    label.style.background = '#f8f9fa';
+                }
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0 && files[0].type === 'text/csv') {
+                    input.files = files;
+                    label.textContent = `${defaultText.includes('🐦') ? '🐦' : '📰'} ${files[0].name} (${formatFileSize(files[0].size)})`;
+                    label.classList.add('has-file');
+                }
+            });
+        }
 
         // Helper function to convert file to base64
         function fileToBase64(file) {
