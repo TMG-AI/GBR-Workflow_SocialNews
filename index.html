@@ -310,172 +310,51 @@
     </div>
 
     <script>
-        // n8n webhook URL
-        const WEBHOOK_URL = 'https://swheatman.app.n8n.cloud/webhook/media_tracker';
-        
-        const form = document.getElementById('mediaTrackerForm');
-        const twitterFileInput = document.getElementById('twitterCsvFile');
-        const newsFileInput = document.getElementById('newsCsvFile');
-        const twitterFileLabel = document.getElementById('twitterFileLabel');
-        const newsFileLabel = document.getElementById('newsFileLabel');
-        const submitBtn = document.getElementById('submitBtn');
-        const statusMessage = document.getElementById('statusMessage');
+const WEBHOOK_URL = 'https://swheatman.app.n8n.cloud/webhook/media_tracker';
 
-        // Handle Twitter CSV file selection
-        twitterFileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                twitterFileLabel.textContent = `🐦 ${file.name} (${formatFileSize(file.size)})`;
-                twitterFileLabel.classList.add('has-file');
-            } else {
-                twitterFileLabel.textContent = '🐦 Upload Twitter CSV';
-                twitterFileLabel.classList.remove('has-file');
-            }
-        });
+const form             = document.getElementById('mediaTrackerForm');
+const twitterFileInput = document.getElementById('twitterCsvFile');
+const newsFileInput    = document.getElementById('newsCsvFile');
+const submitBtn        = document.getElementById('submitBtn');
+const statusMessage    = document.getElementById('statusMessage');
 
-        // Handle News CSV file selection
-        newsFileInput.addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                newsFileLabel.textContent = `📰 ${file.name} (${formatFileSize(file.size)})`;
-                newsFileLabel.classList.add('has-file');
-            } else {
-                newsFileLabel.textContent = '📰 Upload News CSV';
-                newsFileLabel.classList.remove('has-file');
-            }
-        });
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
 
-        // Handle drag and drop for Twitter CSV
-        setupDragAndDrop(twitterFileLabel, twitterFileInput, '🐦 Upload Twitter CSV');
-        
-        // Handle drag and drop for News CSV
-        setupDragAndDrop(newsFileLabel, newsFileInput, '📰 Upload News CSV');
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Uploading…';
+  showStatus('loading', 'Uploading files to workflow…');
 
-        // Handle form submission
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            
-            // Show loading state
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<span class="spinner"></span>Processing...';
-            showStatus('loading', 'Preparing data...');
+  // 1 Build FormData (browser sets multipart headers for you)
+  const fd = new FormData();
+  fd.append('googleAlertsRss',  document.getElementById('googleAlertsRss').value);
+  fd.append('sheetUrl',         document.getElementById('sheetUrl').value);
+  fd.append('sourceTwitter',    document.getElementById('sourceTwitter').checked);
+  fd.append('sourceGoogleNews', document.getElementById('sourceGoogleNews').checked);
+  fd.append('sourceNews',       document.getElementById('sourceNews').checked);
+  if (twitterFileInput.files[0]) fd.append('twitterCsvFile', twitterFileInput.files[0]);
+  if (newsFileInput.files[0])    fd.append('newsCsvFile',    newsFileInput.files[0]);
 
-            try {
-                // Prepare the data
-                const formData = {
-                    googleAlertsRss: document.getElementById('googleAlertsRss').value,
-                    sheetUrl: document.getElementById('sheetUrl').value,
-                    sources: {
-                        twitter: document.getElementById('sourceTwitter').checked,
-                        googleNews: document.getElementById('sourceGoogleNews').checked,
-                        news: document.getElementById('sourceNews').checked
-                    }
-                };
+  try {
+    const res = await fetch(WEBHOOK_URL, { method: 'POST', body: fd });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    showStatus('success', 'Media-tracking workflow started. Check your sheet in a few minutes.');
+    form.reset();
+  } catch (err) {
+    console.error(err);
+    showStatus('error', 'Upload failed: ' + err.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Start Media Tracking';
+  }
+});
 
-                // Handle Twitter CSV file if uploaded
-                const twitterCsvFile = twitterFileInput.files[0];
-                if (twitterCsvFile) {
-                    showStatus('loading', 'Processing Twitter CSV file...');
-                    formData.twitterCsvFile = await fileToBase64(twitterCsvFile);
-                }
+// helper for colored messages (unchanged)
+function showStatus(type, msg) {
+  statusMessage.className = 'status-message ' + type;
+  statusMessage.textContent = msg;
+}
+</script>
 
-                // Handle News CSV file if uploaded
-                const newsCsvFile = newsFileInput.files[0];
-                if (newsCsvFile) {
-                    showStatus('loading', 'Processing News CSV file...');
-                    formData.newsCsvFile = await fileToBase64(newsCsvFile);
-                }
-
-                // Send to n8n webhook
-                showStatus('loading', 'Sending to n8n workflow...');
-                const response = await fetch(WEBHOOK_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify(formData)
-                });
-
-                if (response.ok) {
-                    showStatus('success', 'Media tracking workflow started successfully! Check your Google Sheets for results.');
-                    form.reset();
-                    twitterFileLabel.textContent = '🐦 Upload Twitter CSV';
-                    twitterFileLabel.classList.remove('has-file');
-                    newsFileLabel.textContent = '📰 Upload News CSV';
-                    newsFileLabel.classList.remove('has-file');
-                } else {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-            } catch (error) {
-                console.error('Error:', error);
-                showStatus('error', `Error: ${error.message}. Please check your settings and try again.`);
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = 'Start Media Tracking';
-            }
-        });
-
-        // Helper function to set up drag and drop
-        function setupDragAndDrop(label, input, defaultText) {
-            label.addEventListener('dragover', function(e) {
-                e.preventDefault();
-                label.style.background = '#e9ecef';
-            });
-
-            label.addEventListener('dragleave', function(e) {
-                e.preventDefault();
-                if (label.classList.contains('twitter')) {
-                    label.style.background = '#f8f9fa';
-                } else {
-                    label.style.background = '#f8f9fa';
-                }
-            });
-
-            label.addEventListener('drop', function(e) {
-                e.preventDefault();
-                if (label.classList.contains('twitter')) {
-                    label.style.background = '#f8f9fa';
-                } else {
-                    label.style.background = '#f8f9fa';
-                }
-                
-                const files = e.dataTransfer.files;
-                if (files.length > 0 && files[0].type === 'text/csv') {
-                    input.files = files;
-                    label.textContent = `${defaultText.includes('🐦') ? '🐦' : '📰'} ${files[0].name} (${formatFileSize(files[0].size)})`;
-                    label.classList.add('has-file');
-                }
-            });
-        }
-
-        // Helper function to convert file to base64
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    // Remove the data:text/csv;base64, prefix
-                    const base64String = e.target.result.split(',')[1];
-                    resolve(base64String);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
-        }
-
-        // Helper function to format file size
-        function formatFileSize(bytes) {
-            if (bytes === 0) return '0 Bytes';
-            const k = 1024;
-            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-            const i = Math.floor(Math.log(bytes) / Math.log(k));
-            return Math.round(bytes / Math.pow(k, i), 2) + ' ' + sizes[i];
-        }
-
-        // Helper function to show status messages
-        function showStatus(type, message) {
-            statusMessage.className = `status-message ${type}`;
-            statusMessage.textContent = message;
-        }
-    </script>
 </body>
 </html>
