@@ -1,6 +1,18 @@
+cat > package.json << 'EOF'
 {
   "name": "media-tracker",
   "version": "1.0.0",
   "description": "Media Tracker Web Form for n8n workflow",
-  "private": true
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest"
+  }
 }
+EOF
