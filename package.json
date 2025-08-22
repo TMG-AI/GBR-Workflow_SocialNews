@@ -1,5 +1,4 @@
-cat > package.json << 'EOF'
-{
+echo '{
   "name": "media-tracker",
   "version": "1.0.0",
   "description": "Media Tracker Web Form for n8n workflow",
@@ -14,5 +13,4 @@ cat > package.json << 'EOF'
     "react": "latest",
     "react-dom": "latest"
   }
-}
-EOF
+}' > package.json
