@@ -14,20 +14,41 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Forward the entire request body (multipart form data) to n8n
+    // For multipart form data, we need to reconstruct it
+    const contentType = req.headers['content-type'];
+    let body;
+    let headers = {};
+
+    if (contentType && contentType.includes('multipart/form-data')) {
+      // Vercel parses multipart data into req.body object
+      // We need to convert it back to FormData for n8n
+      const formData = new FormData();
+      
+      // Add all fields from the parsed body
+      for (const [key, value] of Object.entries(req.body || {})) {
+        if (value !== undefined && value !== null) {
+          formData.append(key, value);
+        }
+      }
+      
+      body = formData;
+      // Don't set Content-Type header, let fetch set it with boundary
+    } else {
+      // For JSON data
+      body = JSON.stringify(req.body);
+      headers['Content-Type'] = 'application/json';
+    }
+
     const response = await fetch('https://swheatman.app.n8n.cloud/webhook/media_tracker1', {
       method: 'POST',
-      headers: {
-        // Forward the original content-type (multipart/form-data)
-        'Content-Type': req.headers['content-type'] || 'application/octet-stream',
-      },
-      body: req.body, // Forward raw body, don't JSON.stringify
+      headers: headers,
+      body: body,
     });
 
     const data = await response.text();
     res.status(response.status).send(data);
   } catch (error) {
     console.error('Webhook proxy error:', error);
-    res.status(500).json({ error: 'Webhook request failed' });
+    res.status(500).json({ error: 'Webhook request failed: ' + error.message });
   }
 }
