@@ -197,7 +197,7 @@ form.addEventListener('submit',async e=>{
   fd.append('sourceGoogleNews', document.getElementById('sourceGoogleNews').checked);
   fd.append('sourceNews',       document.getElementById('sourceNews').checked);
   if(twitterFileInput.files[0]) fd.append('twitterCsvFile', twitterFileInput.files[0]);
-  if(newsFileInput.files[0])    fd.append('newsCsvFile',    newsFileInput.files[0]);
+   if(newsFileInput.files[0])    fd.append('meltwaterFile',    newsFileInput.files[0]);
 
   try{
     const res=await fetch(WEBHOOK_URL,{method:'POST',body:fd});
