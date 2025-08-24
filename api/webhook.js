@@ -1,10 +1,9 @@
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');  
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  // Handle preflight requests
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
@@ -14,35 +13,13 @@ export default async function handler(req, res) {
   }
 
   try {
-    // For multipart form data, we need to reconstruct it
-    const contentType = req.headers['content-type'];
-    let body;
-    let headers = {};
-
-    if (contentType && contentType.includes('multipart/form-data')) {
-      // Vercel parses multipart data into req.body object
-      // We need to convert it back to FormData for n8n
-      const formData = new FormData();
-      
-      // Add all fields from the parsed body
-      for (const [key, value] of Object.entries(req.body || {})) {
-        if (value !== undefined && value !== null) {
-          formData.append(key, value);
-        }
-      }
-      
-      body = formData;
-      // Don't set Content-Type header, let fetch set it with boundary
-    } else {
-      // For JSON data
-      body = JSON.stringify(req.body);
-      headers['Content-Type'] = 'application/json';
-    }
-
+    // Simple direct forward - let n8n handle the parsing
     const response = await fetch('https://swheatman.app.n8n.cloud/webhook/media_tracker1', {
       method: 'POST',
-      headers: headers,
-      body: body,
+      headers: {
+        'Content-Type': req.headers['content-type'] || 'application/json',
+      },
+      body: req, // Forward the raw request
     });
 
     const data = await response.text();
