@@ -1,4 +1,3 @@
-// api/webhook.js
 export default async function handler(req, res) {
   // Enable CORS
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,12 +14,14 @@ export default async function handler(req, res) {
   }
 
   try {
+    // Forward the entire request body (multipart form data) to n8n
     const response = await fetch('https://swheatman.app.n8n.cloud/webhook/media_tracker1', {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
+        // Forward the original content-type (multipart/form-data)
+        'Content-Type': req.headers['content-type'] || 'application/octet-stream',
       },
-      body: JSON.stringify(req.body),
+      body: req.body, // Forward raw body, don't JSON.stringify
     });
 
     const data = await response.text();
